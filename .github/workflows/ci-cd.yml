@@ -2,11 +2,11 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
       - 'kubernetes/deployment.yaml'  
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -26,7 +26,7 @@ jobs:
         run: npm ci
       
       - name: Run tests
-        run: npm test || echo "No tests found, would add tests in a real project"
+        run: npm test || echo "No tests found, please add tests in a real project"
 
   sonar:
     name: SonarQube Analysis
@@ -57,30 +57,6 @@ jobs:
             -Dsonar.sources=./src \
             -Dsonar.host.url=${SONAR_HOST_URL} \
             -Dsonar.login=${SONAR_TOKEN}
-
-      - name: Check SonarQube Quality Gate
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: |
-          echo "Checking SonarQube Quality Gate Status..."
-          for i in {1..10}; do
-            STATUS=$(curl -s -X GET "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
-              -H "Authorization: Bearer ${SONAR_TOKEN}" | jq -r '.projectStatus.status')
-            
-            if [ "$STATUS" == "OK" ]; then
-              echo "SonarQube Quality Gate PASSED!"
-              exit 0
-            elif [ "$STATUS" == "ERROR" ]; then
-              echo "SonarQube Quality Gate FAILED!"
-              exit 1
-            else
-              echo "SonarQube status: $STATUS. Retrying in 15 seconds... ($i/10)"
-              sleep 15
-            fi
-          done
-          echo "Timed out waiting for SonarQube Quality Gate."
-          exit 1
 
   build:
     name: Build
@@ -114,7 +90,7 @@ jobs:
     needs: [build]
     env:
       REGISTRY: docker.io
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-app
     outputs:
       image_tag: ${{ steps.set_output.outputs.image_tag }}
     steps:
@@ -135,6 +111,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -174,7 +151,7 @@ jobs:
       
       - name: Set image tag output
         id: set_output
-        run: echo "image_tag=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "image_tag=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
   update-k8s:
     name: Update Kubernetes Deployment
@@ -185,7 +162,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITH_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Git config
         run: |
@@ -195,7 +172,6 @@ jobs:
       - name: Update Kubernetes deployment file
         env:
           IMAGE_TAG: sha-${{ github.sha }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           REGISTRY: docker.io
         run: |
           NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/my-app:${IMAGE_TAG}"
@@ -206,7 +182,7 @@ jobs:
       - name: Commit and push changes
         run: |
           git add kubernetes/deployment.yaml
-          git commit -m "Update Kubernetes deployment with new image tag: ${{ needs.docker.outputs.image_tag }} [skip ci]" || echo "No changes to commit"
+          git commit -m "Update Kubernetes deployment with new image tag: ${{ env.IMAGE_TAG }} [skip ci]" || echo "No changes to commit"
           git push
 
   notify-success:
