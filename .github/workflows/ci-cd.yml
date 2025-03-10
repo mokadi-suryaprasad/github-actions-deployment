@@ -60,20 +60,24 @@ jobs:
 
       - name: Wait for SonarQube Quality Gate
         run: |
-          for i in {1..5}; do
-            STATUS=$(curl -s "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
-              -u ${SONAR_TOKEN}: | jq -r '.projectStatus.status')
-            
-            if [ "$STATUS" == "OK" ]; then
-              echo "SonarQube Quality Gate passed!"
-              exit 0
-            fi
+          echo "Checking SonarQube Quality Gate Status..."
+          for i in {1..10}; do
+            STATUS=$(curl -s -X GET "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
+              -H "Authorization: Bearer ${SONAR_TOKEN}" | jq -r '.projectStatus.status')
 
-            echo "Quality Gate check failed or pending. Retrying in 10s... ($i/5)"
-            sleep 10
+            if [ "$STATUS" == "OK" ]; then
+              echo "SonarQube Quality Gate PASSED!"
+              exit 0
+            elif [ "$STATUS" == "ERROR" ]; then
+              echo "SonarQube Quality Gate FAILED!"
+              exit 1
+            else
+              echo "SonarQube status: $STATUS. Retrying in 15 seconds... ($i/10)"
+              sleep 15
+            fi
           done
 
-          echo "SonarQube Quality Gate failed! Status: $STATUS"
+          echo "⏳ Timed out waiting for SonarQube Quality Gate."
           exit 1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -113,7 +117,7 @@ jobs:
       image_tag: sha-${{ github.sha }}
     env:
       REGISTRY: docker.io
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-app
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPOSITORY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -150,6 +154,7 @@ jobs:
     env:
       IMAGE_TAG: sha-${{ github.sha }}
       IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-app
+      REGISTRY: docker.io
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
