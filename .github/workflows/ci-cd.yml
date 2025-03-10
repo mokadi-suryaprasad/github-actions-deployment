@@ -206,7 +206,7 @@ jobs:
           IMAGE_TAG: sha-${{ github.sha }}
           REGISTRY: docker.io
         run: |
-          NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/github-actions-deployment:${IMAGE_TAG}"
+          NEW_IMAGE="${{ secrets.DOCKER_USERNAME }}/github-actions-deployment:${IMAGE_TAG}"
           echo "Updating deployment.yaml with image: ${NEW_IMAGE}"
           
           # Debug: Print the existing image before replacing
