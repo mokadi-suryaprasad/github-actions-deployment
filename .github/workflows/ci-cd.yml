@@ -155,7 +155,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITH_TOKEN }}
 
       - name: Update Kubernetes deployment file
         run: |
