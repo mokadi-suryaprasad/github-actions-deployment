@@ -57,38 +57,38 @@ jobs:
             -Dsonar.sources=./src \
             -Dsonar.host.url=${SONAR_HOST_URL} \
             -Dsonar.login=${SONAR_TOKEN}
-            - name: Check SonarQube Quality Gate
-            env:
-              SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-              SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-            run: |
-              echo "Checking SonarQube Quality Gate Status..."
-              
-              for i in {1..10}; do
-                RESPONSE=$(curl -s -X GET "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
-                  -H "Authorization: Basic $(echo -n ${SONAR_TOKEN} | base64)")
-          
-                STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status' 2>/dev/null)
-          
-                if [[ -z "$STATUS" || "$STATUS" == "null" ]]; then
-                  echo "Warning: Unable to fetch SonarQube Quality Gate status. Response: $RESPONSE"
-                  exit 1
-                fi
-          
-                if [ "$STATUS" == "OK" ]; then
-                  echo "SonarQube Quality Gate PASSED!"
-                  exit 0
-                elif [ "$STATUS" == "ERROR" ]; then
-                  echo "SonarQube Quality Gate FAILED!"
-                  exit 1
-                else
-                  echo "SonarQube status: $STATUS. Retrying in 15 seconds... ($i/10)"
-                  sleep 15
-                fi
-              done
-          
-              echo "Timed out waiting for SonarQube Quality Gate."
+
+      - name: Check SonarQube Quality Gate
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          echo "Checking SonarQube Quality Gate Status..."
+          for i in {1..10}; do
+            RESPONSE=$(curl -s -X GET "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
+              -H "Authorization: Bearer ${SONAR_TOKEN}")
+    
+            STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status' 2>/dev/null)
+    
+            if [[ -z "$STATUS" || "$STATUS" == "null" ]]; then
+              echo "Warning: Unable to fetch SonarQube Quality Gate status. Response: $RESPONSE"
               exit 1
+            fi
+    
+            if [ "$STATUS" == "OK" ]; then
+              echo "SonarQube Quality Gate PASSED!"
+              exit 0
+            elif [ "$STATUS" == "ERROR" ]; then
+              echo "SonarQube Quality Gate FAILED!"
+              exit 1
+            else
+              echo "SonarQube status: $STATUS. Retrying in 15 seconds... ($i/10)"
+              sleep 15
+            fi
+          done
+    
+          echo "Timed out waiting for SonarQube Quality Gate."
+          exit 1
           
   build:
     name: Build
