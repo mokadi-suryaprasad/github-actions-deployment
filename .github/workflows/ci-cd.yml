@@ -59,12 +59,15 @@ jobs:
             -Dsonar.login=${SONAR_TOKEN}
 
       - name: Wait for SonarQube Quality Gate
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
           echo "Checking SonarQube Quality Gate Status..."
           for i in {1..10}; do
             STATUS=$(curl -s -X GET "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
               -H "Authorization: Bearer ${SONAR_TOKEN}" | jq -r '.projectStatus.status')
-
+            
             if [ "$STATUS" == "OK" ]; then
               echo "SonarQube Quality Gate PASSED!"
               exit 0
@@ -76,12 +79,8 @@ jobs:
               sleep 15
             fi
           done
-
-          echo "⏳ Timed out waiting for SonarQube Quality Gate."
+          echo " Timed out waiting for SonarQube Quality Gate."
           exit 1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   build:
     name: Build
@@ -117,7 +116,7 @@ jobs:
       image_tag: sha-${{ github.sha }}
     env:
       REGISTRY: docker.io
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPOSITORY }}
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]' | tr '/' '-')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -143,8 +142,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
 
   update-k8s:
     name: Update Kubernetes Deployment
@@ -153,17 +152,16 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
       IMAGE_TAG: sha-${{ github.sha }}
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-app
-      REGISTRY: docker.io
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]' | tr '/' '-')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITH_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Kubernetes deployment file
         run: |
-          NEW_IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+          NEW_IMAGE="docker.io/${IMAGE_NAME}:${IMAGE_TAG}"
           sed -i "s|image: .*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
           echo "Updated deployment to use image: ${NEW_IMAGE}"
           cat kubernetes/deployment.yaml
