@@ -79,44 +79,18 @@ jobs:
               sleep 15
             fi
           done
-          echo " Timed out waiting for SonarQube Quality Gate."
+          echo "Timed out waiting for SonarQube Quality Gate."
           exit 1
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [sonar]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build project
-        run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: dist/
 
   docker:
     name: Docker Build and Push
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [sonar]
     outputs:
       image_tag: sha-${{ github.sha }}
     env:
       REGISTRY: docker.io
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]' | tr '/' '-')
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/${{ github.repository_owner }}-$(basename ${{ github.repository }})
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -152,7 +126,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
       IMAGE_TAG: sha-${{ github.sha }}
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]' | tr '/' '-')
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/${{ github.repository_owner }}-$(basename ${{ github.repository }})
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -190,8 +164,8 @@ jobs:
   notify-failure:
     name: Notify Slack on Failure
     runs-on: ubuntu-latest
-    needs: [test, sonar, build, docker, update-k8s]
-    if: failure()  
+    needs: [test, sonar, docker, update-k8s]
+    if: failure()
     steps:
       - name: Send failure message to Slack
         uses: rtCamp/action-slack-notify@v2
