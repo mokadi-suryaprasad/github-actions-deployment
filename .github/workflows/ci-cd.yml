@@ -220,7 +220,7 @@ jobs:
             echo "After Update:"
             grep "image:" kubernetes/deployment.yaml || echo "No image field found!"
         
-        - name: Commit and push changes
+          - name: Commit and push changes
           run: |
             git add kubernetes/deployment.yaml
             git commit -m "Update Kubernetes deployment with new image tag: ${{ env.IMAGE_TAG }} [skip ci]" || echo "No changes to commit"
