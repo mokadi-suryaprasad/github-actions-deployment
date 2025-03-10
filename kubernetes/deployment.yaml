@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: tic-tac-toe
-        image: suryaprasad9773/github-actions-deployment:sha-fb64dc2ac8cd8d79ad4a75c58326596b59eaf402
+        image: suryaprasad9773/github-actions-deployment:sha-02a451cd287afb08739c50b0ac1e42f953746d08
         # Image will be automatically updated by CI/CD pipeline in ArgoCD
         imagePullPolicy: Always
         ports:
