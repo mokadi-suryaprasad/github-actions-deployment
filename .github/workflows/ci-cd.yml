@@ -206,7 +206,7 @@ jobs:
           IMAGE_TAG: sha-${{ github.sha }}
           REGISTRY: docker.io
         run: |
-          NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/my-app:${IMAGE_TAG}"
+          NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${IMAGE_TAG}"
           sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
           echo "Updated deployment to use image: ${NEW_IMAGE}"
           grep -A 1 "image:" kubernetes/deployment.yaml
