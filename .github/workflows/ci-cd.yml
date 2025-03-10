@@ -60,13 +60,21 @@ jobs:
 
       - name: Check SonarQube Quality Gate
         run: |
-          STATUS=$(curl -s "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
-            -u ${SONAR_TOKEN}: | jq -r '.projectStatus.status')
+          for i in {1..5}; do
+            STATUS=$(curl -s "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=my-project-key" \
+              -u ${SONAR_TOKEN}: | jq -r '.projectStatus.status')
+            
+            if [ "$STATUS" == "OK" ]; then
+              echo "SonarQube Quality Gate passed!"
+              exit 0
+            fi
 
-          if [ "$STATUS" != "OK" ]; then
-            echo "SonarQube Quality Gate failed! Status: $STATUS"
-            exit 1
-          fi
+            echo "SonarQube Quality Gate failed or pending. Retrying in 10s... ($i/5)"
+            sleep 10
+          done
+
+          echo "SonarQube Quality Gate failed! Status: $STATUS"
+          exit 1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -105,7 +113,7 @@ jobs:
       image_tag: sha-${{ github.sha }}
     env:
       REGISTRY: docker.io
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-app
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -141,9 +149,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
       IMAGE_TAG: sha-${{ github.sha }}
-      GITHUB_REPOSITORY: ${{ github.repository }}
       REGISTRY: docker.io
-      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-app
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -153,14 +160,14 @@ jobs:
       - name: Update Kubernetes deployment file
         run: |
           NEW_IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-          sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
+          sed -i "s|image: .*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
           echo "Updated deployment to use image: ${NEW_IMAGE}"
-          grep -A 1 "image:" kubernetes/deployment.yaml
+          cat kubernetes/deployment.yaml
 
       - name: Commit and push changes
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          git config user.name "Surya Prasad"
+          git config user.email "mspr9773@gmail.com"
           git add kubernetes/deployment.yaml
           git commit -m "Update Kubernetes deployment with new image tag: $IMAGE_TAG [skip ci]" || echo "No changes to commit"
           git push
@@ -176,4 +183,4 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_COLOR: "#36A64F"
-          SLACK_MESSAGE: "CI/CD Pipeline completed successfully!"
+          SLACK_MESSAGE: "✅ CI/CD Pipeline completed successfully!"
