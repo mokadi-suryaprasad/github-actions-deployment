@@ -201,21 +201,31 @@ jobs:
           git config user.name "MSR"
           git config user.email "mspr9773@gmail.com"
       
-      - name: Update Kubernetes deployment file
-        env:
-          IMAGE_TAG: sha-${{ github.sha }}
-          REGISTRY: docker.io
-        run: |
-          NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${IMAGE_TAG}"
-          sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
-          echo "Updated deployment to use image: ${NEW_IMAGE}"
-          grep -A 1 "image:" kubernetes/deployment.yaml
-      
-      - name: Commit and push changes
-        run: |
-          git add kubernetes/deployment.yaml
-          git commit -m "Update Kubernetes deployment with new image tag: ${{ env.IMAGE_TAG }} [skip ci]" || echo "No changes to commit"
-          git push
+          - name: Update Kubernetes deployment file
+          env:
+            IMAGE_TAG: sha-${{ github.sha }}
+            REGISTRY: docker.io
+          run: |
+            NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${IMAGE_TAG}"
+            echo "Updating deployment.yaml with image: ${NEW_IMAGE}"
+        
+            # Debug: Print the existing image before replacing
+            echo "Before Update:"
+            grep "image:" kubernetes/deployment.yaml || echo "No image field found!"
+        
+            # Ensure correct replacement
+            sed -i "s|image: .*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
+        
+            # Debug: Print the file after updating
+            echo "After Update:"
+            grep "image:" kubernetes/deployment.yaml || echo "No image field found!"
+        
+        - name: Commit and push changes
+          run: |
+            git add kubernetes/deployment.yaml
+            git commit -m "Update Kubernetes deployment with new image tag: ${{ env.IMAGE_TAG }} [skip ci]" || echo "No changes to commit"
+            git push
+        
 
   notify-success:
     name: Notify Slack on Success
