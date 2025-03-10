@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'kubernetes/deployment.yaml'  # Prevents CI loops
+      - 'kubernetes/deployment.yaml'  
   pull_request:
     branches: [main]
 
@@ -65,15 +65,15 @@ jobs:
               -u ${SONAR_TOKEN}: | jq -r '.projectStatus.status')
             
             if [ "$STATUS" == "OK" ]; then
-              echo "✅ SonarQube Quality Gate passed!"
+              echo "SonarQube Quality Gate passed!"
               exit 0
             fi
 
-            echo "🔄 Quality Gate check failed or pending. Retrying in 10s... ($i/5)"
+            echo "Quality Gate check failed or pending. Retrying in 10s... ($i/5)"
             sleep 10
           done
 
-          echo "❌ SonarQube Quality Gate failed! Status: $STATUS"
+          echo "SonarQube Quality Gate failed! Status: $STATUS"
           exit 1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -149,7 +149,6 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
       IMAGE_TAG: sha-${{ github.sha }}
-      REGISTRY: docker.io
       IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-app
     steps:
       - name: Checkout code
@@ -161,7 +160,7 @@ jobs:
         run: |
           NEW_IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
           sed -i "s|image: .*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
-          echo "🔄 Updated deployment to use image: ${NEW_IMAGE}"
+          echo "Updated deployment to use image: ${NEW_IMAGE}"
           cat kubernetes/deployment.yaml
 
       - name: Commit and push changes
@@ -169,7 +168,7 @@ jobs:
           git config --global user.name "MSR"
           git config --global user.email "msuryaprasad11@gmail.com"
           git add kubernetes/deployment.yaml
-          git commit -m "🚀 Updated Kubernetes deployment with new image tag: $IMAGE_TAG [skip ci]" || echo "⚠️ No changes to commit"
+          git commit -m "Updated Kubernetes deployment with new image tag: $IMAGE_TAG [skip ci]" || echo "⚠️ No changes to commit"
           git push
 
   notify-success:
@@ -183,4 +182,4 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_COLOR: "#36A64F"
-          SLACK_MESSAGE: "✅ CI/CD Pipeline completed successfully!"
+          SLACK_MESSAGE: "CI/CD Pipeline completed successfully!"
