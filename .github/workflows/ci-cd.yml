@@ -198,35 +198,33 @@ jobs:
       
       - name: Configure Git User
         run: |
-            git config user.name "MSR"
-            git config user.email "mspr9773@gmail.com"
+          git config user.name "MSR"
+          git config user.email "mspr9773@gmail.com"
         
       - name: Update Kubernetes deployment file
         env:
-            IMAGE_TAG: sha-${{ github.sha }}
-            REGISTRY: docker.io
-          run: |
-            NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/github-actions-deployment:${IMAGE_TAG}"
-            echo "Updating deployment.yaml with image: ${NEW_IMAGE}"
+          IMAGE_TAG: sha-${{ github.sha }}
+          REGISTRY: docker.io
+        run: |
+          NEW_IMAGE="${REGISTRY}/${{ secrets.DOCKER_USERNAME }}/github-actions-deployment:${IMAGE_TAG}"
+          echo "Updating deployment.yaml with image: ${NEW_IMAGE}"
           
-            # Debug: Print the existing image before replacing
-            echo "Before Update:"
-            grep "image:" kubernetes/deployment.yaml || echo "No image field found!"
+          # Debug: Print the existing image before replacing
+          echo "Before Update:"
+          grep "image:" kubernetes/deployment.yaml || echo "No image field found!"
           
-            # Ensure correct replacement
-            sed -i "s|image: .*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
+          # Ensure correct replacement
+          sed -i "s|image: .*|image: ${NEW_IMAGE}|g" kubernetes/deployment.yaml
           
-            # Debug: Print the file after updating
-            echo "After Update:"
-            grep "image:" kubernetes/deployment.yaml || echo "No image field found!"
+          # Debug: Print the file after updating
+          echo "After Update:"
+          grep "image:" kubernetes/deployment.yaml || echo "No image field found!"
         
       - name: Commit and push changes
         run: |
-            git add kubernetes/deployment.yaml
-            git commit -m "Update Kubernetes deployment with new image tag: ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
-            git push
-        
-        
+          git add kubernetes/deployment.yaml
+          git commit -m "Update Kubernetes deployment with new image tag: ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
+          git push     
 
   notify-success:
     name: Notify Slack on Success
